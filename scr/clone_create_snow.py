@@ -130,10 +130,14 @@ for file_path in sorted(Path(OBS_DATA).glob('*.dat')):
         #with open(infile) as f:
         while True:
             msg = ecc.codes_grib_new_from_file(gfile) #gfile) #f)
-            if msg is None: break
+            #msg = ecc.codes_grib_new_from_file(f)
+            if msg is None: 
+                gfile.close()
+                break
             param = ecc.codes_get_long(msg, 'param')
             date = ecc.codes_get_long(msg, "date")
             hour = ecc.codes_get_long(msg, "time")
+            also_hour = ecc.codes_get_long(msg, "hour")
             this_hour = str(hour)[0].zfill(2) #the hour will be 600, want to put it in 06 format
             this_date = str(date)+this_hour
             if (param == param_code) and (obs_date == this_date):
@@ -146,11 +150,13 @@ for file_path in sorted(Path(OBS_DATA).glob('*.dat')):
                 save_index.append(change_index)
                 # Monitor memory usage
                 object_size = sys.getsizeof(msg)
-                print(f"Message size {object_size}")
-                gc.collect()
+                #print(f"Message size {object_size}")
+                gfile.close()
+                # gc.collect()
                 break
+            #else:
+            #    print(f"Finding {param}, {date} and {hour} {also_hour} but  obs_date != this_date ({obs_date} ? {this_date})")
         #print("Now closing")
-        gfile.close()
     del df_obs
     import pdb 
     pdb.set_trace()
