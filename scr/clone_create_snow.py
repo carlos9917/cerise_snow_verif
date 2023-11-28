@@ -19,13 +19,12 @@ from pathlib import Path
 import pandas as pd
 from collections import OrderedDict
 param_code = 260289 #snow cover
-
-infile="snow_cover_202210_ll_grid.grib2"
+DATA="/ec/res4/scratch/nhd/CERISE/"
+infile=os.path.join(DATA,"MODEL_DATA","snow_cover_202210_ll_grid.grib2")
 origin="no-ar-cw"
 if os.stat(infile).st_size==0:
     print(f"{infile} is empty!")
     sys.exit(1)
-
 
 gfile = open(infile)
 nf=ecc.codes_count_in_file(gfile)
@@ -73,7 +72,7 @@ while True:
     hour = ecc.codes_get_long(msg, "time")
     if (key == param_code) and (hour == 600):
         print(f"Found key and input for {date} and time {hour}" )
-        values_modify[:] = ecc.codes_get_values(msg)
+        values_modify[:] = np.nan #ecc.codes_get_values(msg)
         i+=1
         found_var=True
     else:
@@ -110,27 +109,28 @@ def get_data_fromtxt(txtFile):
 obs=OrderedDict()
 for key in ["date","lat","lon","snowc"]:
     obs[key]=[]
-for file_path in sorted(Path("CRYO_SW").glob('*.dat')):
-    date,lat,lon,snow = get_data_fromtxt(str(file_path))
-    obs["date"].extend(date)
-    obs["lat"].extend(lat)
-    obs["lon"].extend(lon)
-    obs["snowc"].extend(snow)
 
-df_obs = pd.DataFrame(obs)
-
-
-
-for _,r in df_obs.iterrows():
-    lat = r.lat
-    lon = r.lon
-    snow = r.snowc/100.
-    obs_date = r.date
-    with open(infile) as f:
+import gc
+save_index =[]
+OBS_DATA=os.path.join(DATA,"CRYO_SW")
+for file_path in sorted(Path(OBS_DATA).glob('*.dat')):
+    print(f"Processing {file_path}")
+    obs["date"],obs["lat"],obs["lon"],obs["snowc"] = get_data_fromtxt(str(file_path))
+    #obs["date"].extend(date)
+    #obs["lat"].extend(lat)
+    #obs["lon"].extend(lon)
+    #obs["snowc"].extend(snow)
+    df_obs = pd.DataFrame(obs)
+    for _,r in df_obs.iterrows():
+        lat = r.lat
+        lon = r.lon
+        snow = r.snowc/100.
+        obs_date = r.date
+        gfile = open(infile)
+        #with open(infile) as f:
         while True:
-            msg = ecc.codes_grib_new_from_file(f)
-            if msg is None:
-                break
+            msg = ecc.codes_grib_new_from_file(gfile) #gfile) #f)
+            if msg is None: break
             param = ecc.codes_get_long(msg, 'param')
             date = ecc.codes_get_long(msg, "date")
             hour = ecc.codes_get_long(msg, "time")
@@ -139,6 +139,80 @@ for _,r in df_obs.iterrows():
             if (param == param_code) and (obs_date == this_date):
                 latlonidx = ecc.codes_grib_find_nearest(msg,lat,lon)
                 change_index = latlonidx[0]["index"]
-                print(f"Before modifying: {values_modify[change_index]}")
-                print(f"Now changing to {snow}")
-                values_modify[change_index] = snow
+                #print(f"Index to change {change_index}")
+                #print(f"Before modifying: {values_modify[change_index]}")
+                #print(f"Now changing to {snow}")
+                #values_modify[change_index] = snow
+                save_index.append(change_index)
+                # Monitor memory usage
+                object_size = sys.getsizeof(msg)
+                print(f"Message size {object_size}")
+                gc.collect()
+                break
+        #print("Now closing")
+        gfile.close()
+    del df_obs
+    import pdb 
+    pdb.set_trace()
+
+#df_obs = pd.DataFrame(obs)
+#
+#all_lats = df_obs.drop_duplicates(subset=["lat","lon"])
+#all_dates = df_obs.drop_duplicates(subset=["date"])["date"].to_list()
+#save_index =[]
+
+#for _,r in df_obs.iterrows():
+for date in all_dates:
+    for _,r in all_lats.iterrows():
+        lat = r.lat
+        lon = r.lon
+        snow = r.snowc/100.
+        obs_date = r.date
+        gfile = open(infile)
+        #with open(infile) as f:
+        while True:
+            msg = ecc.codes_grib_new_from_file(gfile) #gfile) #f)
+            if msg is None: break
+            param = ecc.codes_get_long(msg, 'param')
+            date = ecc.codes_get_long(msg, "date")
+            hour = ecc.codes_get_long(msg, "time")
+            this_hour = str(hour)[0].zfill(2) #the hour will be 600, want to put it in 06 format
+            this_date = str(date)+this_hour
+            if (param == param_code) and (obs_date == this_date):
+                latlonidx = ecc.codes_grib_find_nearest(msg,lat,lon)
+                change_index = latlonidx[0]["index"]
+                #print(f"Index to change {change_index}")
+                #print(f"Before modifying: {values_modify[change_index]}")
+                #print(f"Now changing to {snow}")
+                #values_modify[change_index] = snow
+                save_index.append(change_index)
+                break
+        gfile.close()
+    import pdb
+    pdb.set_trace()
+
+print("Paso esta parte")
+gfile = open(infile)
+while True:
+    msg_clone = ecc.codes_grib_new_from_file(gfile)
+    if msg_clone is None: break
+    key = ecc.codes_get_long(msg_clone, ikey)
+    hour = ecc.codes_get_long(msg, "time")
+    if (key == param_code) and (hour == 600):
+        print(f"Found key for cloning the output of {key} on hour {hour}" )
+        msg2 = ecc.codes_clone(msg_clone)
+        #break
+    else:
+        get_msg = ecc.codes_clone(msg_clone)
+        other_msg.append(get_msg)
+        i+=1
+gfile.close()
+outfile = os.path.join(DATA,"obs_202210_dummy.grib2")
+#write the output
+with open(outfile,'wb') as f:
+    ecc.codes_set_values(msg2, values_modify)
+    ecc.codes_write(msg2, f)
+    for i in range(nf-1):
+        ecc.codes_set_values(other_msg[i],other_values[i,:])
+        ecc.codes_write(other_msg[i], f)
+
