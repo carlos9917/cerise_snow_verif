@@ -133,7 +133,7 @@ def get_indices_lat_lon(param_code:int, cryo_file:str,infile:str,lat:float,lon:f
         if (param == param_code) and date_file == date and hour == 600:
             latlonidx = ecc.codes_grib_find_nearest(msg,lat,lon)
             change_index = latlonidx[0]["index"]
-            print(f"Index to change {change_index}")
+            #print(f"Index to change {change_index}")
     gfile.close()
     return change_index
 
@@ -141,6 +141,7 @@ def get_indices_lat_lon(param_code:int, cryo_file:str,infile:str,lat:float,lon:f
 
 if __name__ == "__main__":
     DATA="/ec/res4/scratch/nhd/CERISE/"
+    DATA = "/home/tenantadmin/CERISE/"
     # this inpuit file contains the snow data for the whole month for cycle 600 only
     infile=os.path.join(DATA,"MODEL_DATA","snow_cover_202210_600.grib2")
     origin="no-ar-cw"
@@ -151,6 +152,7 @@ if __name__ == "__main__":
     else:
         infile = sys.argv[1]
         cryo_file = sys.argv[2]
+        out_file = sys.argv[3]
     
     if os.stat(infile).st_size==0:
         print(f"{infile} is empty!")
@@ -169,10 +171,7 @@ if __name__ == "__main__":
         index = get_indices_lat_lon(param_code, cryo_file,infile,lat,lon,obs_date) 
         save_index.append(index)
         save_snow.append(snow)
-
-    import pdb
-    pdb.set_trace()
-
+    np.savetxt(out_file,np.c_[save_index,save_snow],delimiter=",",fmt='%d %1.3f')
     #indices, snow =  get_indices_snow_obs(param_code,cryo_file,infile)
     #print("got indices")
     #fname = os.path.split(cryo_file)[-1]
