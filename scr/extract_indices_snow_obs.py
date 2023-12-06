@@ -77,26 +77,30 @@ def get_indices_snow_obs(param_code:int, cryo_file:str,infile:str) -> list:
     df_obs = pd.DataFrame(obs)
     file_date = os.path.split(cryo_file)[-1].split("_")[-1].replace(".dat","")
     save_index = []
+    gfile = open(infile)
     for _,r in df_obs.iterrows():
         lat = r.lat
         lon = r.lon
         snow = r.snowc/100.
         obs_date = r.date
-        gfile = open(infile)
+        #gfile = open(infile)
         #with open(infile) as f:
         while True:
             msg = ecc.codes_grib_new_from_file(gfile) #gfile) #f)
             #msg = ecc.codes_grib_new_from_file(f)
             if msg is None: 
-                gfile.close()
+                #gfile.close()
                 break
             param = ecc.codes_get_long(msg, 'param')
             date = ecc.codes_get_long(msg, "date")
             hour = ecc.codes_get_long(msg, "time")
-            also_hour = ecc.codes_get_long(msg, "hour")
-            this_hour = str(hour)[0].zfill(2) #the hour will be 600, want to put it in 06 format
-            this_date = str(date)+this_hour
-            if (param == param_code) and (obs_date == this_date):
+            date_file = int(obs_date[0:8])
+ 
+            #also_hour = ecc.codes_get_long(msg, "hour")
+            #this_hour = str(hour)[0].zfill(2) #the hour will be 600, want to put it in 06 format
+            #this_date = str(date)+this_hour
+            #if (param == param_code) and (obs_date == this_date):
+            if (param == param_code) and date_file == date and hour == 600:
                 latlonidx = ecc.codes_grib_find_nearest(msg,lat,lon)
                 change_index = latlonidx[0]["index"]
                 #print(f"Index to change {change_index}")
@@ -107,11 +111,11 @@ def get_indices_snow_obs(param_code:int, cryo_file:str,infile:str) -> list:
                 # Monitor memory usage
                 #object_size = sys.getsizeof(msg)
                 #print(f"Message size {object_size}")
-                gfile.close()
                 gc.collect()
                 break
-            else:
-                print(f"Finding {param}, {date} and {hour} {also_hour} but  obs_date != this_date ({obs_date} ? {this_date})")
+            #else:
+            #    print(f"Finding {param}, {date} and {hour} in {date_file} ")
+    gfile.close()
     del df_obs
     return save_index
 
@@ -130,7 +134,9 @@ if __name__ == "__main__":
     if os.stat(infile).st_size==0:
         print(f"{infile} is empty!")
     indices= get_indices_snow_obs(param_code,cryo_file,infile)
-    obs_file = os.path.join(DATA,"CRYO_SW",cryo_file.replace(".dat","_ix.npz"))
+    print("got indices")
+    fname = os.path.split(cryo_file)[-1]
+    out_file = os.path.join(DATA,"CRYO_SW",fname.replace(".dat","_ix.npz"))
     #out_file = os.path.join(cryo_file
     with open(out_file,"wb") as f:
         np_list = np.array(indices)
