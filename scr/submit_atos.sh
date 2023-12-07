@@ -2,8 +2,13 @@
 #SBATCH --mem-per-cpu=48GB
 #SBATCH --time=12:00:00
 
-#ml conda
-#conda activate glat
+
+ATOS=ac
+if [[ "$HOSTNAME" =~ .*"$ATOS".* ]]; then
+  echo "Working in ECMWF"
+  ml conda
+  conda activate glat
+fi
 
 
 #python clone_create_snow.py

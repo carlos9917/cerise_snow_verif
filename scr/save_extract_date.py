@@ -53,28 +53,32 @@ ndays=calendar.monthrange(year, month)[1]
 #it will save all values here:
 # I will only take values on hour 6, which is when the snow data is available
 values_modify = np.zeros([ndays,latdim*londim], dtype=np.float32) #I will be saving all days
-values_leave=np.zeros([ndays*nhours-1,latdim*londim], dtype=np.float32)
+#values_leave=np.zeros([ndays*nhours-1,latdim*londim], dtype=np.float32)
 ikey="param"
 count_others=0
 i=0
 found_var=False
 gfile = open(infile)
+MISSING = 9999 #1.0e36  # A value out of range
+
 while True:
     msg = ecc.codes_grib_new_from_file(gfile)
     if msg is None:
         break
+    ecc.codes_set(msg, 'missingValue', MISSING)
     #print(msg['param'])
     key = ecc.codes_get_long(msg, ikey)
     date = ecc.codes_get_long(msg, "date")
     hour = ecc.codes_get_long(msg, "time")
+
     if (key == param_code) and (hour == 600):
         print(f"Found key and input for {date} and time {hour}" )
-        values_modify[i,:] = -999 #np.nan #ecc.codes_get_values(msg)
+        values_modify[i,:] = MISSING # -999 #np.nan #ecc.codes_get_values(msg)
         i+=1
         found_var=True
-    else:
-        values_leave[count_others,:] = ecc.codes_get_values(msg)
-        count_others+=1
+    #else:
+    #    values_leave[count_others,:] = ecc.codes_get_values(msg)
+    #    count_others+=1
 gfile.close()
 if not found_var:
     print(f"{param_code} not found in {infile}!")
@@ -99,7 +103,7 @@ while True:
     #    i+=1
 
 gfile.close()
-outfile = os.path.join(DATA,"MODEL_DATA","obs_202210_600.grib2")
+outfile = os.path.join(DATA,"MODEL_DATA","dummy_obs_202210_600.grib2")
 #write the output
 nf = ndays*nhours-1
 with open(outfile,'wb') as f:
