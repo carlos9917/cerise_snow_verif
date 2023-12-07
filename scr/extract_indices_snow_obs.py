@@ -1,11 +1,8 @@
 """
-Read the carra grib file in regular lat lon format
-clone the contents.
-Set all values to np.nan
-
+Read the template obs file in grib format.
 Read the snow data. Replace where there is data to snow observations.
-Save
-
+Find the indices where the obs data is defined.
+Save all to ascii files.
 
 """
 
@@ -143,7 +140,7 @@ if __name__ == "__main__":
     DATA="/ec/res4/scratch/nhd/CERISE/"
     DATA = "/home/tenantadmin/CERISE/"
     # this inpuit file contains the snow data for the whole month for cycle 600 only
-    infile=os.path.join(DATA,"MODEL_DATA","snow_cover_202210_600.grib2")
+    infile=os.path.join(DATA,"MODEL_DATA", "template_obs_202210_600.grib2" ) #  "snow_cover_202210_600.grib2")
     origin="no-ar-cw"
     param_code = 260289
     if len(sys.argv) == 1:
