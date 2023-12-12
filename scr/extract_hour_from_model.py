@@ -18,9 +18,19 @@ from collections import OrderedDict
 
 param_code = 260289 #snow cover
 DATA="/ec/res4/scratch/nhd/CERISE/"
-infile=os.path.join(DATA,"MODEL_DATA","snow_cover_202210_ll_grid.grib2")
-outfile = os.path.join(DATA,"MODEL_DATA","snow_cover_202210_ll_grid_600.grib2")
-origin="no-ar-cw"
+
+
+#infile=os.path.join(DATA,"MODEL_DATA","snow_cover_202210_ll_grid.grib2")
+if len(sys.argv) == 1:
+    print("Please provide the input grib file")
+    sys.exit(1)
+else:
+    infile = sys.argv[1]
+
+#outfile = os.path.join(DATA,"MODEL_DATA","snow_cover_202210_ll_grid_600.grib2")
+fname = os.path.split(infile)[-1].replace(".grib2","")
+
+outfile = os.path.join(DATA,"MODEL_DATA",fname+"_600.grib2")#,"snow_cover_202210_ll_grid_600.grib2")
 hour_select=600 #in integer format
 ikey="param"
 
