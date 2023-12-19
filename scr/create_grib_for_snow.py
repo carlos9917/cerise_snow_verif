@@ -19,12 +19,24 @@ from collections import OrderedDict
 
 param_code = 260289 #snow cover
 DATA="/ec/res4/scratch/nhd/CERISE/"
-year=2022
-month=10
+
+if len(sys.argv) == 1:
+    print("Please provide the  year and month")
+    sys.exit(1)
+else:
+    year = int(sys.argv[1])
+    month = int(sys.argv[2])
+
+#year=2022
+#month=10
 yyyymm=str(year)+str(month).zfill(2)
 ndays=calendar.monthrange(year, month)[1]
-infile=os.path.join(DATA,"MODEL_DATA", "template_obs_202210_600.grib2") #"snow_cover_202210_600.grib2")
-outfile = os.path.join(DATA,"CRYO_SW","obs_202210_600.grib2")
+
+#infile=os.path.join(DATA,"MODEL_DATA", "template_obs_202210_600.grib2")
+#outfile = os.path.join(DATA,"CRYO_SW","obs_202210_600.grib2")
+infile = os.path.join(DATA,"MODEL_DATA", "template_obs_"+yyyymm+"_600.grib2")
+outfile = os.path.join(DATA,"CRYO_SW","obs_"+yyyymm+"_600.grib2")
+
 origin="no-ar-cw"
 obs_fpre="snow_cryo_" #2906_ix.npz"
 if os.stat(infile).st_size==0:

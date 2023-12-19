@@ -16,9 +16,20 @@ import pandas as pd
 from collections import OrderedDict
 param_code = 260289 #snow cover
 DATA="/ec/res4/scratch/nhd/CERISE/"
-infile=os.path.join(DATA,"MODEL_DATA","snow_cover_202210_ll_grid.grib2")
-outfile = os.path.join(DATA,"MODEL_DATA","template_obs_202210_600.grib2")
 origin="no-ar-cw"
+
+if len(sys.argv) == 1:
+    print("Please provide input and output file")
+    sys.exit(1)
+else:
+    infile = sys.argv[1]
+    outfile = sys.argv[2]
+
+
+#infile=os.path.join(DATA,"MODEL_DATA","snow_cover_202210_ll_grid.grib2")
+#outfile = os.path.join(DATA,"MODEL_DATA","template_obs_202210_600.grib2")
+
+
 if os.stat(infile).st_size==0:
     print(f"{infile} is empty!")
     sys.exit(1)
