@@ -24,6 +24,7 @@ from collections import OrderedDict
 if __name__=="__main__":
     param_code = 260289 #snow cover
     DATA="/ec/res4/scratch/nhd/CERISE/"
+    DATA="/media/cap/7fed51bd-a88e-4971-9656-d617655b6312/data/CERISE"
     infile=os.path.join(DATA,"MODEL_DATA","snow_cover_202210_ll_grid.nc")
     origin="no-ar-cw"
 
@@ -31,7 +32,7 @@ if __name__=="__main__":
         print(f"{infile} is empty!")
         sys.exit(1)
  
-    ds = xr.open_dataset(out_cds)
+    ds = xr.open_dataset(infile,engine="netcdf4")
     nhours=8
     import pdb
     pdb.set_trace()
