@@ -3,7 +3,12 @@ Reads the model (CARRA) grib file in regular lat lon format
 Extracts all data for a particular time 
 In this case the time is set to 600, since
 this is the time when the snow data is available
+
+Once the values of snow cover are read, the data is written
+as snow/no snow when the snow cover is over a threshold
+Using 80 % as threshold below
 """
+snow_cover_thr = 0.8
 
 import os
 import sys
@@ -22,16 +27,20 @@ DATA="/ec/res4/scratch/nhd/CERISE/"
 
 #infile=os.path.join(DATA,"MODEL_DATA","snow_cover_202210_ll_grid.grib2")
 if len(sys.argv) == 1:
-    print("Please provide the input grib file")
+    print("Please provide the hour, input grib file and the output file name")
     sys.exit(1)
 else:
-    infile = sys.argv[1]
+    hour = sys.argv[1]
+    infile = sys.argv[2]
+    outfile = sys.argv[3]
+#setting this one above now
+#fname = os.path.split(infile)[-1].replace(".grib2","")
+#outfile = os.path.join(DATA,"MODEL_DATA",fname+"_600.grib2")
+hour_select = str(hour).zfill(2)+"00"
+hour_select = int(hour_select)
 
-#outfile = os.path.join(DATA,"MODEL_DATA","snow_cover_202210_ll_grid_600.grib2")
-fname = os.path.split(infile)[-1].replace(".grib2","")
-
-outfile = os.path.join(DATA,"MODEL_DATA",fname+"_600.grib2")#,"snow_cover_202210_ll_grid_600.grib2")
-hour_select=600 #in integer format
+print(f"Extracting hour {hour_select} from {infile} to {outfile}")
+#hour_select=600 #in integer format
 ikey="param"
 
 if os.stat(infile).st_size==0:
@@ -97,8 +106,15 @@ while True:
         nmsg+=1
 gfile.close()
 
+# Now setting the snow_no_snow variable here
+
+set_values = np.zeros([ndays,latdim*londim], dtype=np.float32) #I will be saving all days
+for i in range(ndays):
+    set_values[i,:] = np.where((values_read[i,:] >= snow_cover_thr) & (values_read[i,:] != 9999.0), 1.0, 0.0)
+
 #write the output
 with open(outfile,'wb') as f:
     for i in range(ndays):
-        ecc.codes_set_values(collect_msg[i], values_read[i,:])
+        #ecc.codes_set_values(collect_msg[i], values_read[i,:])
+        ecc.codes_set_values(collect_msg[i], set_values[i,:])
         ecc.codes_write(collect_msg[i], f)

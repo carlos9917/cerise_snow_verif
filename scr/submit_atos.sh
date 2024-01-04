@@ -19,13 +19,25 @@ OBS_DIR=../../CRYO_SW
 MOD_DIR=../../MODEL_DATA
 SCR=$PWD
 
+#original setup
+#GRIB_MODEL=$MOD_DIR/snow_cover_${PERIOD}_ll_grid.grib2
+#GRIB_600=$MOD_DIR/snow_cover_${PERIOD}_ll_grid_600.grib2 
+#TEMP_OBS=$MOD_DIR/template_obs_${PERIOD}_600.grib2
+#OUT_OBS=$MOD_DIR/obs_${PERIOD}_600.grib2
+
+#these are for binary snow
 GRIB_MODEL=$MOD_DIR/snow_cover_${PERIOD}_ll_grid.grib2
-GRIB_600=$MOD_DIR/snow_cover_${PERIOD}_ll_grid_600.grib2 
+GRIB_600=$MOD_DIR/binary_snow_model_${PERIOD}_ll_grid_600.grib2 
 TEMP_OBS=$MOD_DIR/template_obs_${PERIOD}_600.grib2
+OUT_OBS=$MOD_DIR/binary_snow_cryo_${PERIOD}_ll_grid_600.grib2
 
 # 1. Extract the hour 6 from a model file containing the whole month
-#echo "Extracting hour 600 from $$MOD_DIR/snow_cover_${PERIOD}_ll_grid.grib2"
-#python extract_hour_from_model.py $GRIB_MODEL
+if [ ! -f $GRIB_600 ]; then
+  echo "Extracting hour 600 from $GRIB_MODEL"
+  python extract_hour_from_model.py 6 $GRIB_MODEL $GRIB_600
+else
+  echo "Skipping extraction of hour 600 from $GRIB_MODEL since $GRIB_600 already exists"
+fi 
 
 extract_points()
 {
@@ -52,8 +64,8 @@ for DATE in $(seq -w $IDATE $EDATE); do
   rm ${concat_all[@]}
 done
 }
-#extract_points
 
+extract_points
 # 3. Using the list of points generated in step 2, clone the 
 #    model data and set the points where there is no data
 #    to missing data and define the points where there is data
@@ -63,4 +75,4 @@ python create_obs_template_from_model.py $GRIB_MODEL $TEMP_OBS
 
 # 3.2 Create final obs file from obs template and points above
 echo "Creating obs file from points and template file"
-python create_grib_for_snow.py ${PERIOD:0:4} ${PERIOD:4:2}
+python create_grib_for_snow.py ${PERIOD:0:4} ${PERIOD:4:2} $TEMP_OBS $OUT_OBS

@@ -21,21 +21,19 @@ param_code = 260289 #snow cover
 DATA="/ec/res4/scratch/nhd/CERISE/"
 
 if len(sys.argv) == 1:
-    print("Please provide the  year and month")
+    print("Please provide the  year and month, input and output file")
     sys.exit(1)
 else:
     year = int(sys.argv[1])
     month = int(sys.argv[2])
+    infile = sys.argv[3]
+    outfile = sys.argv[4]
 
-#year=2022
-#month=10
 yyyymm=str(year)+str(month).zfill(2)
 ndays=calendar.monthrange(year, month)[1]
 
-#infile=os.path.join(DATA,"MODEL_DATA", "template_obs_202210_600.grib2")
-#outfile = os.path.join(DATA,"CRYO_SW","obs_202210_600.grib2")
-infile = os.path.join(DATA,"MODEL_DATA", "template_obs_"+yyyymm+"_600.grib2")
-outfile = os.path.join(DATA,"CRYO_SW","obs_"+yyyymm+"_600.grib2")
+#infile = os.path.join(DATA,"MODEL_DATA", "template_obs_"+yyyymm+"_600.grib2")
+#outfile = os.path.join(DATA,"CRYO_SW","obs_"+yyyymm+"_600.grib2")
 
 origin="no-ar-cw"
 obs_fpre="snow_cryo_" #2906_ix.npz"
@@ -106,6 +104,10 @@ while True:
         values_read[i,:] = ecc.codes_get_values(msg)
         date_str = str(date)
         obs_file = os.path.join(DATA,"CRYO_SW",obs_fpre+date_str+"06_idx_obs.csv") #snow_cryo_2022100106_idx_obs.csv
+        print(f"Reading file {obs_file}")
+        if not os.path.isfile(obs_file):
+            print(f"{obs_file} does not exist!")
+            sys.exit(1)
         df_obs = pd.read_csv(obs_file,sep=" ",header=None)
         df_obs.columns=["idx","obs"]
         df_obs["idx"] = df_obs["idx"].astype(int)

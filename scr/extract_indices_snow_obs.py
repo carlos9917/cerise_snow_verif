@@ -4,7 +4,11 @@ Read the snow data. Replace where there is data to snow observations.
 Find the indices where the obs data is defined.
 Save all to ascii files.
 
+NOTE: the snow data is converted to binary format here:
+setting snow as 1.0 if snow  prob is >= 90 % or zero otherwise
+
 """
+snow_thres = 90 #values equal or above this are set to 1
 
 import os
 import sys
@@ -16,27 +20,6 @@ from pathlib import Path
 import pandas as pd
 from collections import OrderedDict
 import gc
-
-#gfile = open(infile)
-#nf=ecc.codes_count_in_file(gfile)
-#gfile.close()
-#nhours=8
-#gfile = open(infile)
-#while 1:
-#    gid = ecc.codes_grib_new_from_file(gfile)
-#    if gid is None:
-#        break
-#    Nx = ecc.codes_get(gid, "Nx")
-#    Ny = ecc.codes_get(gid, "Ny")
-#
-#gfile.close()
-#print(f"Grid size Nx: {Nx}")
-#print(f"Grid size Ny: {Ny}")
-#
-#values={}
-#latdim=Ny
-#londim=Nx
-#print(f"lat and lon dimensions {latdim}, {londim}")
 
 # Read the data from snow
 def get_data_fromtxt(txtFile):
@@ -77,7 +60,11 @@ def get_indices_snow_obs(param_code:int, cryo_file:str,infile:str) -> list:
     for _,r in df_obs.iterrows():
         lat = r.lat
         lon = r.lon
-        snow = r.snowc/100.
+        #snow = r.snowc/100.
+        if r.snowc >= snow_thres:
+            snow = 1.0
+        else:
+            snow = 0.0
         obs_date = r.date
         #gfile = open(infile)
         #with open(infile) as f:

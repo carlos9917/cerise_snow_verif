@@ -5,8 +5,12 @@ OUTDIR=/ec/res4/scratch/nhd/CERISE/MODEL_DATA
 PERIOD=201505
 INI=20150501
 END=20150531
+GRID="lambert"
 GRID="reg" #"lambert"
-if GRID="reg"; then
+TIME=0000
+TIME=0000/0300/0600/0900/1200/1500/1800/2100
+if [ $GRID == "reg" ] ; then
+echo "Downloading in regular grid"
 mars << eof
 RETRIEVE,
     CLASS      = RR,
@@ -27,6 +31,7 @@ RETRIEVE,
 eof
 else
 
+echo "Downloading in lambert grid"
 mars << eof
 RETRIEVE,
     CLASS      = RR,
@@ -37,10 +42,11 @@ RETRIEVE,
     LEVTYPE    = SFC,
     PARAM      = 260289,
     DATE       = $INI/TO/$END,
-    TIME       = 0000/0300/0600/0900/1200/1500/1800/2100,
+    TIME       = $TIME,
     STEP       = 00,
     ORIGIN     = NO-AR-CW,
     TARGET     = "$OUTDIR/snow_cover_${PERIOD}.grib2",
     PADDING    = 0,
     PROCESS    = LOCAL
 eof
+fi
