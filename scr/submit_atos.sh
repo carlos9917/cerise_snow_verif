@@ -15,6 +15,7 @@ fi
 PERIOD=201505
 IDATE=${PERIOD}01
 EDATE=${PERIOD}31
+HOUR=6
 OBS_DIR=../../CRYO_SW
 MOD_DIR=../../MODEL_DATA
 SCR=$PWD
@@ -27,16 +28,17 @@ SCR=$PWD
 
 #these are for binary snow
 GRIB_MODEL=$MOD_DIR/snow_cover_${PERIOD}_ll_grid.grib2
-GRIB_600=$MOD_DIR/binary_snow_model_${PERIOD}_ll_grid_600.grib2 
-TEMP_OBS=$MOD_DIR/template_obs_${PERIOD}_600.grib2
-OUT_OBS=$MOD_DIR/binary_snow_cryo_${PERIOD}_ll_grid_600.grib2
+GRIB_HOUR=$MOD_DIR/binary_snow_model_${PERIOD}_ll_grid_$HOUR.grib2 
+TEMP_OBS=$MOD_DIR/template_obs_${PERIOD}_$HOUR.grib2
+OUT_OBS=$MOD_DIR/binary_snow_cryo_${PERIOD}_ll_grid_$HOUR.grib2
 
-# 1. Extract the hour 6 from a model file containing the whole month
-if [ ! -f $GRIB_600 ]; then
-  echo "Extracting hour 600 from $GRIB_MODEL"
-  python extract_hour_from_model.py 6 $GRIB_MODEL $GRIB_600
+# 1. Extract the hour $HOUR from a model file containing the whole month
+# Dont need to do this if I  extract the data at the correct time beforehand!
+if [ ! -f $GRIB_HOUR ]; then
+  echo "Extracting hour $HOUR from $GRIB_MODEL"
+  python extract_hour_from_model.py $HOUR $PERIOD $GRIB_MODEL $GRIB_HOUR
 else
-  echo "Skipping extraction of hour 600 from $GRIB_MODEL since $GRIB_600 already exists"
+  echo "Skipping extraction of hour $HOUR from $GRIB_MODEL since $GRIB_HOUR already exists"
 fi 
 
 extract_points()
@@ -55,7 +57,7 @@ for DATE in $(seq -w $IDATE $EDATE); do
 
   for F in tmp_snow_${DATE}_*.dat; do
       OUT=$(basename $F .dat).csv
-      python extract_indices_snow_obs.py $GRIB_600 $F $OUT
+      python extract_indices_snow_obs.py $GRIB_HOUR $F $OUT
       concat_all+=($OUT)
   done
   echo ${concat_all[@]}

@@ -27,12 +27,13 @@ DATA="/ec/res4/scratch/nhd/CERISE/"
 
 #infile=os.path.join(DATA,"MODEL_DATA","snow_cover_202210_ll_grid.grib2")
 if len(sys.argv) == 1:
-    print("Please provide the hour, input grib file and the output file name")
+    print("Please provide the hour, yearmonth, input grib file and the output file name")
     sys.exit(1)
 else:
     hour = sys.argv[1]
-    infile = sys.argv[2]
-    outfile = sys.argv[3]
+    yyyymm = sys.argv[2]
+    infile = sys.argv[3]
+    outfile = sys.argv[4]
 #setting this one above now
 #fname = os.path.split(infile)[-1].replace(".grib2","")
 #outfile = os.path.join(DATA,"MODEL_DATA",fname+"_600.grib2")
@@ -48,8 +49,8 @@ if os.stat(infile).st_size==0:
     sys.exit(1)
 
 nhours=8
-year=2022
-month=10
+year=int(yyyymm[0:4])
+month=int(yyyymm[4:6])
 ndays=calendar.monthrange(year, month)[1]
 
 

@@ -5,10 +5,11 @@ OUTDIR=/ec/res4/scratch/nhd/CERISE/MODEL_DATA
 PERIOD=201505
 INI=20150501
 END=20150531
-GRID="lambert"
 GRID="reg" #"lambert"
-TIME=0000
+GRID="lambert"
 TIME=0000/0300/0600/0900/1200/1500/1800/2100
+TIME=0000
+
 if [ $GRID == "reg" ] ; then
 echo "Downloading in regular grid"
 mars << eof
