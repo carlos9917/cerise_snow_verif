@@ -226,7 +226,7 @@ snow_cryo_5-10km_2022100606.dat  snow_cryo_5-10km_2022102206.dat
 <span id="cb3-59"><a href="#cb3-59" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-60"><a href="#cb3-60" aria-hidden="true" tabindex="-1"></a>ax.scatter(lons, lats, edgecolor<span class="op">=</span><span class="st">"none"</span>, s<span class="op">=</span><span class="dv">10</span>,c<span class="op">=</span>snow_prob,cmap<span class="op">=</span>mycmap)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-display" data-execution_count="1">
-<pre><code>&lt;matplotlib.collections.PathCollection at 0x7f6bdeed7850&gt;</code></pre>
+<pre><code>&lt;matplotlib.collections.PathCollection at 0x7f131d2a9b50&gt;</code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <p><img src="verification_files/figure-html/cell-2-output-2.png" class="img-fluid"></p>
@@ -263,7 +263,7 @@ libabsl_cord.so.2301.0.0: cannot open shared object file: No such file or direct
   warnings.warn(f"Engine {name!r} loading failed:\n{ex}", RuntimeWarning)</code></pre>
 </div>
 <div class="cell-output cell-output-display" data-execution_count="2">
-<pre><code>&lt;matplotlib.collections.QuadMesh at 0x7f6bdd47ccd0&gt;</code></pre>
+<pre><code>&lt;matplotlib.collections.QuadMesh at 0x7f131c641010&gt;</code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <p><img src="verification_files/figure-html/cell-3-output-3.png" width="589" height="449"></p>
@@ -275,7 +275,7 @@ libabsl_cord.so.2301.0.0: cannot open shared object file: No such file or direct
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>obs <span class="op">=</span> xr.open_dataset(grib_obs,engine<span class="op">=</span><span class="st">'cfgrib'</span>, backend_kwargs<span class="op">=</span>{<span class="st">'filter_by_keys'</span>:{<span class="st">'shortName'</span>: param_fcst}})</span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>obs[<span class="st">'fscov'</span>][<span class="dv">0</span>,:,:].plot()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-display" data-execution_count="3">
-<pre><code>&lt;matplotlib.collections.QuadMesh at 0x7f6bdd19eb90&gt;</code></pre>
+<pre><code>&lt;matplotlib.collections.QuadMesh at 0x7f131ccff790&gt;</code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <p><img src="verification_files/figure-html/cell-4-output-2.png" width="589" height="449"></p>
@@ -283,14 +283,14 @@ libabsl_cord.so.2301.0.0: cannot open shared object file: No such file or direct
 </div>
 <p>The interpolated data put on the same grid for the snow-cryo files looks like this. For the model, all values were set to 1.0 if snow fraction is &gt;= 0.8, while for the snow observations values were set to 1.0 if probability was equal or more than 90 %.</p>
 <p>#‘Fraction_of_snow_cover_surface in binary_snow_cryo_201505_ll_grid_.png’ #‘Fraction_of_snow_cover_surface in binary_snow_model_201505_ll_grid.png’</p>
-<p><img src="./figs/Fraction_of_snow_cover_surface%20in%20binary_snow_cryo_201505_ll_grid_.png" class="img-fluid" alt="cryo snow observations"> [cryo snow model](./figs/Fraction_of_snow_cover_surface&nbsp;in&nbsp;binary_snow_model_201505_ll_grid_.png</p>
+<p><img src="./figs/Fraction_of_snow_cover_surface%20in%20binary_snow_cryo_201505_ll_grid_.png" class="img-fluid" alt="cryo snow observations"> <img src="./figs/Fraction_of_snow_cover_surface%20in%20binary_snow_model_201505_ll_grid.png" class="img-fluid" alt="cryo snow model"></p>
 <p>Another option is to use the gridded files</p>
 <div class="cell" data-execution_count="4">
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>obs_nc  <span class="op">=</span> os.path.join(grib_data,<span class="st">"daily-avhrr-sce-nhl_ease-50_201505111200.nc"</span>)</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>obs_ease <span class="op">=</span> xr.open_dataset(obs_nc,engine<span class="op">=</span><span class="st">'netcdf4'</span>)</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>obs_ease[<span class="st">"prob_snow_o"</span>][<span class="dv">0</span>,:,:].plot()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-display" data-execution_count="4">
-<pre><code>&lt;matplotlib.collections.QuadMesh at 0x7f6bdcd77410&gt;</code></pre>
+<pre><code>&lt;matplotlib.collections.QuadMesh at 0x7f131c5686d0&gt;</code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <p><img src="verification_files/figure-html/cell-5-output-2.png" width="639" height="464"></p>

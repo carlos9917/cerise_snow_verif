@@ -161,7 +161,7 @@ The interpolated data put on the same grid for the snow-cryo files looks like th
 
 
 ![cryo snow observations](./figs/Fraction_of_snow_cover_surface\ in\ binary_snow_cryo_201505_ll_grid_.png)
-![cryo snow model](./figs/Fraction_of_snow_cover_surface\ in\ binary_snow_model_201505_ll_grid_.png
+![cryo snow model](./figs/Fraction_of_snow_cover_surface\ in\ binary_snow_model_201505_ll_grid.png)
 
 Another option is to use the gridded files
 
