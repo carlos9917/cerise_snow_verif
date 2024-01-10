@@ -21,6 +21,10 @@ import pandas as pd
 from collections import OrderedDict
 import xarray as xr
 
+import cartopy.crs as ccrs
+import pandas as pd
+from datetime import datetime
+
 def get_indices_snow_nc(param_code:int, cryo_file:str,infile:str) -> list:
     save_index=[]; save_snow=[]
     print(f"Processing {cryo_file}")
@@ -94,21 +98,31 @@ if __name__ == "__main__":
     DATA="/ec/res4/scratch/nhd/CERISE/"
     origin="no-ar-cw"
     param_code = 260289
-    prob_thr = 90.
-    df_ll = pd.read_csv("all_lat_lons_ordered.csv")
+    prob_thr = 90. #set everything above this thresold to 1, otherwise 0
+
     if len(sys.argv) == 1:
-        print("Please provide the input nc file")
+        print("Please provide the input nc file and the list of lat lon to process")
         sys.exit(1)
     else:
         infile = sys.argv[1]
+        csv_ll = sys.argv[2]
+        
+    # these are all the lat lon from model
+    df_ll = pd.read_csv(csv_ll)
     
     if os.stat(infile).st_size==0:
         print(f"{infile} is empty!")
+    date_file = infile.split("_")[-1].replace(".nc","")[0:8]
     ds = xr.open_dataset(infile,engine='netcdf4')
+    # check the time in the file
+    ts = ds["time"].values[0]
+    dt_obj =pd.to_datetime(ts,unit="s")
+    dt_str = datetime.strftime(dt_obj,"%Y%m%d%H")
+    print(f"Timestamp in the file {infile}: {dt_str}")
     all_values=[]
     central_lon = ds["Lambert_Azimuthal_Grid"].attrs["longitude_of_projection_origin"]
-    import cartopy.crs as ccrs
-    data_crs = ccrs.LambertConformal(central_longitude=central_lon)
+    central_lat = ds["Lambert_Azimuthal_Grid"].attrs["latitude_of_projection_origin"]
+    data_crs = ccrs.LambertConformal(central_longitude=central_lon,central_latitude=central_lat)
     var_nc = "prob_snow_o" #'prob_snow_c'
     for lat,lon in zip(df_ll.lat,df_ll.lon):
         #lat_index = (ds['lat'] - lat).argmin().item()
@@ -116,10 +130,16 @@ if __name__ == "__main__":
         #lat_index = abs(ds['yc'] - lat).argmin(dim='yc').item()
         #lon_index = abs(ds['xc'] - lon).argmin(dim='xc').item()
         #value_at_point = ds[var_nc].values[0,lon_index,lat_index]
-        #test_lat = 72.366
-        #test_lon = -31.920
+        test_lat = 72.366
+        test_lon = -31.920
         x, y = data_crs.transform_point(x=lon, y=lat, src_crs=ccrs.PlateCarree())
         value_at_point = ds[var_nc].sel(xc=x, yc=y,method="nearest").values[0]
+        #selected_data = ds['prob_snow_o'].sel( xc=ds['lon'].sel(lat=test_lat, method='nearest').values, yc=ds['lat'].sel(lon=test_lon, method='nearest').values, method='nearest')
+projection_params = { 'proj': 'laea', 'ellps': 'WGS84', 'lat_0': 90, 'lon_0': 0 }
+laea_projection = ccrs.LambertAzimuthalEqualArea( central_latitude=projection_params['lat_0'], central_longitude=projection_params['lon_0'], globe=ccrs.Globe(ellipse=projection_params['ellps']))
+
+        import pdb
+        pdb.set_trace()
 
         if np.isnan(value_at_point):
             value_at_point = 9999.
@@ -132,4 +152,4 @@ if __name__ == "__main__":
         #find_closest = ds['prob_snow_c'].sel(lat=lat, lon=lon).item()
      
     df_out = pd.DataFrame({"lat":df_ll.lat.values,"lon":df_ll.lon.values,"snow_no_snow":all_values})
-    df_out.to_csv("all_lat_lons_snow_ordered.csv")
+    df_out.to_csv(f"all_lat_lons_snow_ordered_{date_file}.csv",index=False)

@@ -79,4 +79,4 @@ while True:
 lon_180 = (lon_values + 180) % 360 - 180
 gfile.close()
 df=pd.DataFrame({"lat":lat_values,"lon":lon_180})
-df.to_csv("all_lat_lons_ordered.csv",index=False)
+df.to_csv(outfile,index=False)
