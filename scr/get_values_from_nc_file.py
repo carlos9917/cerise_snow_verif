@@ -22,6 +22,8 @@ from collections import OrderedDict
 import xarray as xr
 
 import cartopy.crs as ccrs
+import pyproj
+
 import pandas as pd
 from datetime import datetime
 
@@ -122,7 +124,16 @@ if __name__ == "__main__":
     all_values=[]
     central_lon = ds["Lambert_Azimuthal_Grid"].attrs["longitude_of_projection_origin"]
     central_lat = ds["Lambert_Azimuthal_Grid"].attrs["latitude_of_projection_origin"]
-    data_crs = ccrs.LambertConformal(central_longitude=central_lon,central_latitude=central_lat)
+    #data_crs = ccrs.LambertConformal(central_longitude=central_lon,central_latitude=central_lat)
+
+    projection_params = { 'proj': 'laea', 'ellps': 'WGS84', 'lat_0': central_lat, 'lon_0': central_lon }
+    # Define the Lambert Azimuthal Equal Area projection using Cartopy
+    laea_projection = ccrs.LambertAzimuthalEqualArea( central_latitude=projection_params['lat_0'], central_longitude=projection_params['lon_0'], 
+                            globe=ccrs.Globe(ellipse=projection_params['ellps']))
+
+    # Define the original projection of the dataset using pyproj.CRS
+    original_projection = pyproj.CRS.from_proj4('+proj=laea +ellps=WGS84 +lat_0=90 +lon_0=0')
+
     var_nc = "prob_snow_o" #'prob_snow_c'
     for lat,lon in zip(df_ll.lat,df_ll.lon):
         #lat_index = (ds['lat'] - lat).argmin().item()
@@ -130,16 +141,18 @@ if __name__ == "__main__":
         #lat_index = abs(ds['yc'] - lat).argmin(dim='yc').item()
         #lon_index = abs(ds['xc'] - lon).argmin(dim='xc').item()
         #value_at_point = ds[var_nc].values[0,lon_index,lat_index]
-        test_lat = 72.366
-        test_lon = -31.920
-        x, y = data_crs.transform_point(x=lon, y=lat, src_crs=ccrs.PlateCarree())
-        value_at_point = ds[var_nc].sel(xc=x, yc=y,method="nearest").values[0]
-        #selected_data = ds['prob_snow_o'].sel( xc=ds['lon'].sel(lat=test_lat, method='nearest').values, yc=ds['lat'].sel(lon=test_lon, method='nearest').values, method='nearest')
-projection_params = { 'proj': 'laea', 'ellps': 'WGS84', 'lat_0': 90, 'lon_0': 0 }
-laea_projection = ccrs.LambertAzimuthalEqualArea( central_latitude=projection_params['lat_0'], central_longitude=projection_params['lon_0'], globe=ccrs.Globe(ellipse=projection_params['ellps']))
+        #This should give around 100
+        #test_lat = 72.366
+        #test_lon = -31.920
+        #desired_xc, desired_yc = pyproj.Transformer.from_crs(ccrs.PlateCarree(), original_projection).transform(test_lon, test_lat)
+      
+        #x, y = data_crs.transform_point(x=lon, y=lat, src_crs=ccrs.PlateCarree())
+        # Convert latitude and longitude to Lambert Azimuthal Grid coordinates
+        desired_xc, desired_yc = pyproj.Transformer.from_crs(ccrs.PlateCarree(), original_projection).transform(lon, lat)
+        value_at_point = ds[var_nc].sel(xc=desired_xc, yc=desired_yc,method="nearest").values[0]
 
-        import pdb
-        pdb.set_trace()
+        #value_at_point = ds[var_nc].sel(xc=x, yc=y,method="nearest").values[0]
+        #selected_data = ds['prob_snow_o'].sel( xc=ds['lon'].sel(lat=test_lat, method='nearest').values, yc=ds['lat'].sel(lon=test_lon, method='nearest').values, method='nearest')
 
         if np.isnan(value_at_point):
             value_at_point = 9999.
@@ -150,6 +163,6 @@ laea_projection = ccrs.LambertAzimuthalEqualArea( central_latitude=projection_pa
                 value_at_point = 0.0
         all_values.append(value_at_point)
         #find_closest = ds['prob_snow_c'].sel(lat=lat, lon=lon).item()
-     
+    print("Writing the data to file") 
     df_out = pd.DataFrame({"lat":df_ll.lat.values,"lon":df_ll.lon.values,"snow_no_snow":all_values})
     df_out.to_csv(f"all_lat_lons_snow_ordered_{date_file}.csv",index=False)

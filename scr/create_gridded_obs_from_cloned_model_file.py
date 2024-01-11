@@ -1,0 +1,119 @@
+"""
+Read the lat lon and snow_no_snow values from
+a csv file for a given date, extraced from the sat data in the nc files
+
+Clone the data from a model file.
+
+Replace the values in the cloned file to 
+that of the lat lon pairs in the csv file
+
+"""
+
+import os
+import sys
+import re
+import eccodes as ecc
+import numpy as np
+import calendar
+from pathlib import Path
+import pandas as pd
+from collections import OrderedDict
+
+param_code = 260289 #snow cover in the grib file
+DATA="/ec/res4/scratch/nhd/CERISE/"
+hour_select = 0
+if len(sys.argv) == 1:
+    print("Please provide the model file to clone, and the csv file with the lat,lon, field coordinates")
+    sys.exit(1)
+else:
+    grib_file = sys.argv[1]
+    outfile = sys.argv[2]
+
+
+nhours=8
+gfile = open(grib_file)
+while 1:
+    gid = ecc.codes_grib_new_from_file(gfile)
+    if gid is None:
+        break
+    Nx = ecc.codes_get(gid, "Nx")
+    Ny = ecc.codes_get(gid, "Ny")
+    date = ecc.codes_get_long(gid, "date")
+    hour = ecc.codes_get_long(gid, "time")
+    break #only gotta do this once
+
+gfile.close()
+print(f"Grid size Nx: {Nx}")
+print(f"Grid size Ny: {Ny}")
+latdim = Ny
+londim = Nx
+
+# the date
+year = int(str(date)[0:4])
+month = int(str(date)[6:8])
+ndays=calendar.monthrange(year, month)[1]
+values_read = np.zeros([ndays,latdim*londim], dtype=np.float32) #I will be saving all days
+test_date = 20150501 #for testing readin only one
+i=0
+found_var=False
+gfile = open(grib_file)
+
+#this loop will run over all the dates in the grib file, containing a month of data
+while True:
+    msg = ecc.codes_grib_new_from_file(gfile)
+    if msg is None:
+        break
+    #print(msg['param'])
+    key = ecc.codes_get_long(msg, "param")
+    date = ecc.codes_get_long(msg, "date")
+    hour = ecc.codes_get_long(msg, "time")
+    #if (key == param_code) and (hour == hour_select): 
+    #just for testing only one
+    if (key == param_code) and (hour == hour_select) and (date == test_date): 
+        found_var=True
+        print(f"Found key and input for {date} and time {hour}" )
+        values_read[i,:] = ecc.codes_get_values(msg)
+        date_str = str(date)
+        obs_file = "all_lat_lons_snow_ordered_"+date_str+".csv"
+        print(f"Reading file {obs_file}")
+        if not os.path.isfile(obs_file):
+            print(f"{obs_file} does not exist!")
+            sys.exit(1)
+        df_obs = pd.read_csv(obs_file,sep=",")
+        if 'Unnamed: 0' in df_obs.columns:
+            df_obs.drop(columns='Unnamed: 0',inplace=True)
+        for _,r in df_obs.iterrows():
+            snow_obs = r.snow_no_snow
+            values_read[i,_] = snow_obs
+        i+=1
+gfile.close()
+if not found_var:
+    print(f"{param_code} not found in {grib_file}!")
+    sys.exit(1)
+
+# 2. clone the file and write new file with the snow values
+#for file_path in sorted(Path(OBS_DATA).glob(fpre+yyyymm+'*.npz')):
+gfile = open(grib_file)
+collect_msg = []
+nmsg=0
+while True:
+    msg_clone = ecc.codes_grib_new_from_file(gfile)
+    if msg_clone is None: break
+    key = ecc.codes_get_long(msg_clone, "param")
+    hour = ecc.codes_get_long(msg_clone, "time")
+    if (key == param_code) and (hour == hour_select):
+        print(f"Found key for cloning the output of {key} on hour {hour}" )
+        msg2 = ecc.codes_clone(msg_clone)
+        collect_msg.append(msg2)
+        nmsg+=1
+
+gfile.close()
+#write the output
+nf = ndays*nhours-1
+with open(outfile,'wb') as f:
+    ecc.codes_set_values(collect_msg[0], values_read[0,:])
+    ecc.codes_write(collect_msg[0], f)
+    #for i in range(ndays):
+    #    ecc.codes_set_values(collect_msg[i], values_read[i,:])
+    #    ecc.codes_write(collect_msg[i], f)
+
