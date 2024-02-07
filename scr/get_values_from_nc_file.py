@@ -27,73 +27,38 @@ import pyproj
 import pandas as pd
 from datetime import datetime
 
-def get_indices_snow_nc(param_code:int, cryo_file:str,infile:str) -> list:
-    save_index=[]; save_snow=[]
-    print(f"Processing {cryo_file}")
-    obs["date"],obs["lat"],obs["lon"],obs["snowc"] = get_data_fromtxt(cryo_file)
-    df_obs = pd.DataFrame(obs)
-    file_date = os.path.split(cryo_file)[-1].split("_")[-1].replace(".dat","")
-    gfile = open(infile)
-    for _,r in df_obs.iterrows():
-        lat = r.lat
-        lon = r.lon
-        #snow = r.snowc/100.
-        if r.snowc >= snow_thres:
-            snow = 1.0
-        else:
-            snow = 0.0
-        obs_date = r.date
-        #gfile = open(infile)
-        #with open(infile) as f:
-        while True:
-            msg = ecc.codes_grib_new_from_file(gfile) #gfile) #f)
-            #msg = ecc.codes_grib_new_from_file(f)
-            if msg is None: 
-                #gfile.close()
-                break
-            param = ecc.codes_get_long(msg, 'param')
-            date = ecc.codes_get_long(msg, "date")
-            hour = ecc.codes_get_long(msg, "time")
-            date_file = int(obs_date[0:8])
- 
-            if (param == param_code) and date_file == date and hour == 600:
-                latlonidx = ecc.codes_grib_find_nearest(msg,lat,lon)
-                change_index = latlonidx[0]["index"]
-                print(f"Index to change {change_index}")
-                #print(f"Before modifying: {values_modify[change_index]}")
-                #print(f"Now changing to {snow}")
-                #values_modify[change_index] = snow
-                save_index.append(change_index)
-                save_snow.append(snow)
-                # Monitor memory usage
-                #object_size = sys.getsizeof(msg)
-                #print(f"Message size {object_size}")
-                #gc.collect()
-                #break
-            #else:
-            #    print(f"Finding {param}, {date} and {hour} in {date_file} ")
-    gfile.close()
-    del df_obs
-    return save_index, save_snow
-def get_indices_lat_lon(param_code:int, cryo_file:str,infile:str,lat:float,lon:float, obs_date:str) -> list:
-    gfile = open(infile)
-    date_file = int(obs_date[0:8])
-    while True:
-        msg = ecc.codes_grib_new_from_file(gfile) #gfile) #f)
-        #msg = ecc.codes_grib_new_from_file(f)
-        if msg is None: 
-            #gfile.close()
-            break
-        param = ecc.codes_get_long(msg, 'param')
-        date = ecc.codes_get_long(msg, "date")
-        hour = ecc.codes_get_long(msg, "time")
-        if (param == param_code) and date_file == date and hour == 600:
-            latlonidx = ecc.codes_grib_find_nearest(msg,lat,lon)
-            change_index = latlonidx[0]["index"]
-            #print(f"Index to change {change_index}")
-    gfile.close()
-    return change_index
+def get_snow_pixels(df_ll:pd.DataFrame, ds:xr.Dataset, parameter:str, prob_thr:float) -> None:
+    """
+    Uses variable classed_value_o
+    with pixel class: -1=ocean, 0=nodata, 1=no snow, 2=snow, 4=cloud
+    """
+    for lat,lon in zip(df_ll.lat,df_ll.lon):
+        # Convert latitude and longitude to Lambert Azimuthal Grid coordinates
+        desired_xc, desired_yc = pyproj.Transformer.from_crs(ccrs.PlateCarree(), original_projection).transform(lon, lat)
+        value_at_point = ds[var_nc].sel(xc=desired_xc, yc=desired_yc,method="nearest").values[0]
 
+        if np.isnan(value_at_point):
+            value_at_point = 9999.
+        else:
+            if "prob" in parameter:
+                if value_at_point >= prob_thr:
+                    value_at_point = 1.0
+                else:
+                    value_at_point = 0.0
+
+            elif parameter == "classed_value_o":
+
+                if value_at_point == 2:
+                    value_at_point = 1.0
+                elif value_at_point == 1:
+                    value_at_point = 0.0
+                else:
+                    value_at_point = 9999.
+            else: 
+                print(f"Parameter {parameter} unknown")
+                sys.exit(1)
+        all_values.append(value_at_point)
+        #find_closest = ds['prob_snow_c'].sel(lat=lat, lon=lon).item()
 
 
 if __name__ == "__main__":
@@ -122,10 +87,10 @@ if __name__ == "__main__":
     dt_str = datetime.strftime(dt_obj,"%Y%m%d%H")
     print(f"Timestamp in the file {infile}: {dt_str}")
     all_values=[]
+
+    #define projections to convert xc and yc coordinates in file to lat lon
     central_lon = ds["Lambert_Azimuthal_Grid"].attrs["longitude_of_projection_origin"]
     central_lat = ds["Lambert_Azimuthal_Grid"].attrs["latitude_of_projection_origin"]
-    #data_crs = ccrs.LambertConformal(central_longitude=central_lon,central_latitude=central_lat)
-
     projection_params = { 'proj': 'laea', 'ellps': 'WGS84', 'lat_0': central_lat, 'lon_0': central_lon }
     # Define the Lambert Azimuthal Equal Area projection using Cartopy
     laea_projection = ccrs.LambertAzimuthalEqualArea( central_latitude=projection_params['lat_0'], central_longitude=projection_params['lon_0'], 
@@ -136,23 +101,15 @@ if __name__ == "__main__":
 
     var_nc = "prob_snow_o" #'prob_snow_c'
     for lat,lon in zip(df_ll.lat,df_ll.lon):
-        #lat_index = (ds['lat'] - lat).argmin().item()
-        #lon_index = (ds['lon'] - lon).argmin().item()
-        #lat_index = abs(ds['yc'] - lat).argmin(dim='yc').item()
-        #lon_index = abs(ds['xc'] - lon).argmin(dim='xc').item()
-        #value_at_point = ds[var_nc].values[0,lon_index,lat_index]
+        #Test:
         #This should give around 100
         #test_lat = 72.366
         #test_lon = -31.920
         #desired_xc, desired_yc = pyproj.Transformer.from_crs(ccrs.PlateCarree(), original_projection).transform(test_lon, test_lat)
-      
-        #x, y = data_crs.transform_point(x=lon, y=lat, src_crs=ccrs.PlateCarree())
+
         # Convert latitude and longitude to Lambert Azimuthal Grid coordinates
         desired_xc, desired_yc = pyproj.Transformer.from_crs(ccrs.PlateCarree(), original_projection).transform(lon, lat)
         value_at_point = ds[var_nc].sel(xc=desired_xc, yc=desired_yc,method="nearest").values[0]
-
-        #value_at_point = ds[var_nc].sel(xc=x, yc=y,method="nearest").values[0]
-        #selected_data = ds['prob_snow_o'].sel( xc=ds['lon'].sel(lat=test_lat, method='nearest').values, yc=ds['lat'].sel(lon=test_lon, method='nearest').values, method='nearest')
 
         if np.isnan(value_at_point):
             value_at_point = 9999.
