@@ -1,0 +1,188 @@
+---
+title: "Verification for the CRYO data"
+format: html
+author: "Carlos Peralta"
+date: "07 January 2024"
+date-modified: last-modified
+lang: en
+jupyter: python3
+
+---
+
+Writing here the methodology followed to verify the data
+snow cover data from CRYO againgst the snow cover data
+from CARRA
+
+## naive approach
+The data provided in the snow_cryo files consists of points on a 5-10km grid,
+mainly over Greenland. Since this part is covered by the CARRA west domain
+only this data will be used for the moment.
+The files are provided once a day in ascii format
+```
+snow_cryo_5-10km_2022100106.dat  snow_cryo_5-10km_2022101706.dat
+snow_cryo_5-10km_2022100206.dat  snow_cryo_5-10km_2022101806.dat
+snow_cryo_5-10km_2022100306.dat  snow_cryo_5-10km_2022101906.dat
+snow_cryo_5-10km_2022100406.dat  snow_cryo_5-10km_2022102006.dat
+snow_cryo_5-10km_2022100506.dat  snow_cryo_5-10km_2022102106.dat
+snow_cryo_5-10km_2022100606.dat  snow_cryo_5-10km_2022102206.dat
+
+```
+And contents
+```
+20221006  6  77.47196  -105.57903  100.00  1
+20221006  6  77.55873  -105.68999  100.00  1
+20221006  6  77.64545  -105.80251  100.00  1
+20221006  6  77.73211  -105.91662  100.00  1
+20221006  6  77.49586  -105.18301  100.00  1
+20221006  6  77.66968  -105.40137  100.00  1
+...
+
+```
+
+where the first two columns are datetime ad hour, followed by lat and lon and the probability of snow. The last column is some sort of quality control flag.
+The model data is provided as fractio of snow cover (shortName: fscov, grib2 parameter: 260289)
+
+
+```{python}
+import numpy as np
+import os
+import sys
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import pandas as pd
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import xarray as xr
+
+cryo_obs="/media/cap/7fed51bd-a88e-4971-9656-d617655b6312/data/CERISE/CRYO_SW"
+def get_data_fromtxt(txtFile):
+    
+    lat     = []
+    lon     = []
+    snowFrac = []
+    
+    f = open(txtFile, 'r')
+    
+    for line in f:
+        
+        line    = line.strip()
+        columns = line.split()
+        
+        lat.append(float(columns[2]))
+        lon.append(float(columns[3]))
+        snowFrac.append(float(columns[4]))
+
+    f.close()
+
+    return lat, lon, snowFrac
+
+snow_file=os.path.join(cryo_obs,"snow_cryo_5-10km_2022100306.dat")
+lats,lons,snow_prob = get_data_fromtxt(snow_file)
+
+#mycmap = plt.cm.get_cmap('cool') #old style, deprecated
+
+mycmap = mpl.colormaps["cool"]
+lowerLeftLat  = 60
+lowerLeftLon  = -120
+upperRightLat = 90
+upperRightLon = 0
+lat_inter = 10
+lon_inter = 20
+
+#fig = plt.figure(figsize=(7.88,6.29), dpi=100)
+fig = plt.figure(figsize=(40, 60),dpi=100)
+
+ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
+
+ax.add_feature(cfeature.BORDERS.with_scale('10m'), linestyle=':')
+
+ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True,
+                  linewidth=2, color='gray', alpha=0.5, linestyle='--')
+ax.coastlines()
+ax.add_feature(cfeature.LAND)
+ax.add_feature(cfeature.OCEAN)
+
+ax.scatter(lons, lats, edgecolor="none", s=10,c=snow_prob,cmap=mycmap)
+
+
+
+```
+
+Since the data from CARRA is gridded and the observation data is not, they will
+be put in the same grid using the scripts in the directory `scr`.
+
+In order to compare both quantities, the information will be used to define
+a binary quantity defining points with snow or no-snow.
+Looking at the distribution of two sample dates from observation and forecast data.
+For the observation, the histogram of snow probability generally looks like this
+
+![cryo snow probability histogram](./figs/snow_cryo.png)
+
+For the forecast, the histogram of fraction of snow cover looks like this
+![carra snow fraction histogram](./figs/snow_carra.png)
+
+Based on these plots, will be selecting snow probabilities over 90 % as "snow" (1.0, otherwise "no snow" (0.0)
+For the model, the threshold will be set at 80 %.
+
+### Putting the data in the same format
+In order to place the data in the same grid, a grib file from CARRA
+in a regular lat lon grid will be used as template to place the snow data on the same grid.
+The points closest to the coordinates of the CARRA grid are chosen,
+using a nearest neighbour approach.
+The values are converted to snow or no snow following the thresholds above.
+
+Note that the variable name "fscov" and parameter 260289 will continue to be used in the output grib file,
+since changing the name of the parameter name in the grib to a dummy "snow_no_snow" variable
+would imply creating a new variable definition in the grib tables.
+
+### Example output
+Two example files are shown below
+```{python}
+grib_data="/media/cap/7fed51bd-a88e-4971-9656-d617655b6312/data/CERISE/MODEL_DATA"
+grib_fcst = os.path.join(grib_data,"snow_cover_202210_ll_grid.grib2")
+grib_fcst = os.path.join(grib_data,"binary_snow_model_201505_ll_grid_600.grib2")
+param_fcst="fscov"
+fcst = xr.open_dataset(grib_fcst,engine='cfgrib', backend_kwargs={'filter_by_keys':{'shortName': param_fcst}})
+fcst["fscov"][24,:,:].plot()
+```
+
+```{python}
+grib_obs = os.path.join(grib_data,"binary_snow_cryo_201505_ll_grid_600.grib2")
+param_fcst="fscov"
+obs = xr.open_dataset(grib_obs,engine='cfgrib', backend_kwargs={'filter_by_keys':{'shortName': param_fcst}})
+obs['fscov'][0,:,:].plot()
+```
+
+The interpolated data put on the same grid for the snow-cryo files looks like this. For the model, all values were set to 1.0 if snow fraction is >= 0.8, while for the snow observations values were set to 1.0 if probability was equal or more than 90 %. 
+
+#'Fraction_of_snow_cover_surface in binary_snow_cryo_201505_ll_grid_.png'
+#'Fraction_of_snow_cover_surface in binary_snow_model_201505_ll_grid.png'
+
+
+![cryo snow observations](./figs/Fraction_of_snow_cover_surface\ in\ binary_snow_cryo_201505_ll_grid_.png)
+![cryo snow model](./figs/Fraction_of_snow_cover_surface\ in\ binary_snow_model_201505_ll_grid.png)
+
+Another option is to use the gridded files
+
+```{python}
+obs_nc  = os.path.join(grib_data,"daily-avhrr-sce-nhl_ease-50_201505111200.nc")
+obs_ease = xr.open_dataset(obs_nc,engine='netcdf4')
+obs_ease["prob_snow_o"][0,:,:].plot()
+```
+
+
+#Plotting this in another projection
+#```{python}
+#obs_ease
+#yc = obs_ease["yc"]
+#xc = obs_ease["xc"]
+#fig = plt.figure(figsize=(12,10))
+#ax = plt.axes(projection=ccrs.PlateCarree())
+#CS = ax.contourf(yc,xc,obs_ease["prob_snow_o"][0,:,:],transform=ccrs.PlateCarree(),cmap="RdBu_r")
+#ax.gridlines(draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle='--')
+#ax.coastlines(color='black')
+##ax.set_title(f'CARRA monthly 2m temperature for {dt}', fontsize=16)
+#cbar = plt.colorbar(im,fraction=0.05, pad=0.04,orientation="horizontal")
+#plt.show()
+#```
