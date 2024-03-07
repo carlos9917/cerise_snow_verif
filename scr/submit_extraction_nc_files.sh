@@ -17,11 +17,12 @@ IDATE=${PERIOD}01
 EDATE=${PERIOD}31
 HOUR=6
 OBS_DIR=../../CRYO_NC
-MOD_DIR=../../FC_OB_DATA_USING_CRYO_NC
+MOD_DIR=../../AN_OB_USING_CRYO_NC/
 SCR=$PWD
 
 #these are for binary snow
 GRIB_MODEL=$MOD_DIR/snow_cover_${PERIOD}_fcst.grib2 # this one is the grid in lambert projection
+GRIB_MODEL=$MOD_DIR/analysis_binary_values_${PERIOD}_lambert.grib2
 #GRIB_MODEL=$MOD_DIR/snow_cover_${PERIOD}_regular_grid.grib2 #this one in the regular grid
 
 GRIB_HOUR=$MOD_DIR/binary_snow_model_${PERIOD}_ll_grid_$HOUR.grib2 
@@ -44,4 +45,4 @@ CSV_LL_MODEL=model_lat_lon_ordered.csv #for tha lambert
 
 # This one uses the files above to clone a model file and replace values
 # I got from the step above. The model file is for the whole month
-python create_gridded_obs_from_cloned_model_file.py $GRIB_MODEL $MOD_DIR/snow_cover_${PERIOD}_obs.grib2
+python create_gridded_obs_from_cloned_model_file.py $GRIB_MODEL $MOD_DIR/obs_binary_values_${PERIOD}_lambert.grib2
