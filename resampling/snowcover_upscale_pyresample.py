@@ -14,6 +14,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 nc_file = sys.argv[1]
 output_filename = sys.argv[2]
+var_out = "prob_snow_c" #to be used to dump data below
 
 #nc_file = 'daily-avhrr-sce-nhl_ease-50_201505011200.nc'
 #output_filename = "daily-avhrr-sce-nhl_ease-50_201505011200_resampled.nc"
@@ -50,7 +51,7 @@ nbs = 8 # Use at most X nearest neighbours as basis for gaussian resampling (sti
 fv = np.nan # Value to set at points in target grid where no data is found within radius
 
 # Do a simple nearest neighbour resampling of the data
-data_in = nc["prob_snow_c"].data #[0]
+data_in = nc[var_out].data #[0]
 times = nc["time"].data
 data_out = pr.kd_tree.resample_nearest(src_def, data_in, target_def, radius_of_influence=rad, fill_value=fv)
 
@@ -85,12 +86,22 @@ std_unix_time=[seconds_to_unix_time(ts) for ts in seconds_since_1978]
 #    new_timestamp = int(new_datetime.timestamp())
 #    modified_ts.append(new_timestamp)
 
+# Other info in the grib file
+# Ni = 1475; Equiv to nx
+# Nj = 302;  -> ny
+# latitudeOfFirstGridPointInDegrees = 86; -> SW_lat 
+# longitudeOfFirstGridPointInDegrees = 250.3; -> SW_lon
+# latitudeOfLastGridPointInDegrees = 55.9; -> NE_lat
+# longitudeOfLastGridPointInDegrees = 37.7; NE_lon
+# iDirectionIncrementInDegrees = 0.1; dx
+# jDirectionIncrementInDegrees = 0.1; dy
+# gridType = regular_ll;  proj
+
+
 # Create xarray Dataset
-var_out = "prob_snow_c"
-var_out = "fscov"
+var_out = "fscov" # to be used in the call to ds_harm below and setting the attributes down below
 ds = xr.Dataset(
     {
-        #"prob_snow_c": (["time","lat","lon"], data_out),
         "fscov": (["time","lat","lon"], data_out),
         "bin_snow": (["time","lat","lon"], bin_data),
     },
@@ -108,7 +119,7 @@ ds.time.attrs["units"] = "seconds since 1970-01-01 00:00:00"
 ds.time.attrs["long_name"] = "reference time of product" 
 ds.lon.attrs["units"] = "degrees_east"
 ds.lat.attrs["units"] = "degrees_north"
-ds[var_out].attrs["units"] = "%"
+ds[var_out].attrs["units"] = "None"
 ds["bin_snow"].attrs["units"] = "None"
 ds["bin_snow"].attrs["coordinates"] = "lat lon"
 ds["bin_snow"].attrs["grid_mapping"] = "longlat"
@@ -137,6 +148,21 @@ dummy_array = xr.DataArray(np.array(0, dtype=np.int32))
 ds.attrs["grid_mapping"] = "latitude_longitude"
 #ds.attrs["proj4"] = "+proj=laea +ellps=WGS84 +lat_0=90 +lon_0=0"
 ds.attrs["proj4"] = "+proj=longlat +datum=WGS84"
+ds.attrs["proj"] = ds_harm[var_out].attrs["GRIB_gridType"]
+ds.attrs["nx"] = ds_harm[var_out].attrs["GRIB_Nx"]
+ds.attrs["ny"] = ds_harm[var_out].attrs["GRIB_Ny"]
+ds.attrs["dx"] = ds_harm[var_out].attrs["GRIB_iDirectionIncrementInDegrees"]
+ds.attrs["dy"] = ds_harm[var_out].attrs["GRIB_jDirectionIncrementInDegrees"]
+ds.attrs["SW_lat"] = ds_harm[var_out].attrs["GRIB_latitudeOfFirstGridPointInDegrees"]
+ds.attrs["NE_lat"] = ds_harm[var_out].attrs["GRIB_latitudeOfLastGridPointInDegrees"]
+ds.attrs["SW_lon"] = ds_harm[var_out].attrs["GRIB_longitudeOfFirstGridPointInDegrees"]
+ds.attrs["NE_lon"] = ds_harm[var_out].attrs["GRIB_longitudeOfLastGridPointInDegrees"]
+# Ni = 1475; Equiv to nx
+# Nj = 302;  -> ny
+# latitudeOfFirstGridPointInDegrees = 86; -> SW_lat 
+# longitudeOfFirstGridPointInDegrees = 250.3; -> SW_lon
+# latitudeOfLastGridPointInDegrees = 55.9; -> NE_lat
+# longitudeOfLastGridPointInDegrees = 37.7; NE_lon
 
 ds.to_netcdf(output_filename)
 #open and add the projection information
@@ -157,8 +183,4 @@ fid.close()
 
 #plt.imshow(data_out)
 #plt.show()
-
-
-
-
 
