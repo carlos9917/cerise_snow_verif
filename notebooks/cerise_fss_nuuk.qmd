@@ -45,7 +45,8 @@ import seaborn as sns
 MET_res="/home/cap/Downloads/MET_RESULTS"
 cmap_custom = mcolors.ListedColormap(['blue',"white", 'red'])  # Define a custom colormap with two colors
 #opening one file
-ncfile = "grid_stat_000000L_20150509_000000V_pairs.nc"
+#ncfile = "grid_stat_000000L_20150509_000000V_pairs.nc"
+ncfile = "grid_stat_000000L_20150514_000000V_pairs.nc"
 nf = os.path.join(MET_res,ncfile)
 dataset = xr.open_dataset(nf)
 
