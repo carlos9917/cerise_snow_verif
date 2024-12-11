@@ -18,7 +18,7 @@ ds = xr.open_dataset(ncfile)
 
 # Dump only this variable
 variable_name = 'prob_snow_c'
-ds_single = ds[[variable_name]]  
+ds_single = ds[[variable_name,"lat","lon"]]  
 
 # Remove the grid_mapping attribute if it exists  
 if 'grid_mapping' in ds_single[variable_name].attrs:  
@@ -43,6 +43,11 @@ ds_reproj = ds_single.rio.reproject(
 # Clean up any remaining grid mapping references  
 if 'grid_mapping' in ds_reproj[variable_name].attrs:  
     del ds_reproj[variable_name].attrs['grid_mapping']  
+#fix the longitude before writing
+#ds_reproj['x'] = (((ds_reproj['x'] + 180) % 360) - 180)  
+#ds_reproj['x'] = xr.where(ds_reproj['x'] < 0, ds_reproj['x'] + 360, ds_reproj['x'])
+#ds_reproj = ds_reproj.sortby('x') 
+
 
 # Save to new NetCDF file  
 ds_reproj.to_netcdf(os.path.join(data_path,f'reg_ll_{variable_name}_date.nc'))
