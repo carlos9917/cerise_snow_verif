@@ -9,13 +9,16 @@ the original. Cutting the grid based on the lon min and max values
 always resulted in a smaller than expected domain (due to issues with
 the range of lat crossing the 0 longitude line).
 Hence only the limits of latitude where used to setup
-a mask in the harmonie grid. Since the purpose
+a mask in the harmonie grid. The longitude values are updated
+afterwards to match the original grid dimeensions.
+
+Since the purpose
 of this script is to generate a file that has the same
 resolution as the original netcdf file, the exact
 domain extent is unimportant as long as the resolution is upscaled
 to the correct size.
 In the verification step only the matching domains
-will be used. Additionally, the 
+will be used. 
 """
 
 import os
@@ -32,15 +35,33 @@ from warnings import filterwarnings
 filterwarnings('ignore')
 
 
+/*************  ✨ Codeium Command 🌟  *************/
 def seconds_to_unix_time(seconds_since_1978):
-    """Convert seconds since 1978-01-01 to Unix timestamp."""
+    """
+    Convert seconds since 1978-01-01 to Unix timestamp.
+
+    Parameters
+    ----------
+    seconds_since_1978 : int
+        Number of seconds since 1978-01-01 00:00:00.
+
+    Returns
+    -------
+    unix_time : float
+        Unix time in seconds since 1970-01-01 00:00:00.
+    """
+    # Reference date
     base_datetime = datetime.datetime(1978, 1, 1, 0, 0, 0)
+
+    # Add seconds since reference date
     target_datetime = base_datetime + datetime.timedelta(seconds=seconds_since_1978)
+
+    # Convert to Unix time
     return target_datetime.timestamp()
+/******  f6a14190-75a7-449b-a67b-ed334664cb4c  *******/
 
 def get_geom_def(
-    input_file, harmonie_file, obs_var="prob_snow_c", var_out="prob_snow_c", model_var="fscov", prob_snow_thr=80.0
-):
+    input_file, harmonie_file):
     """
     This function dumps the domain
     """
@@ -113,10 +134,48 @@ def get_geom_def(
     # Get corresponding lat/lon for these points
     target_lat = nc_lat[np.ix_(range(len(unique_y)), range(len(unique_x)))]
     target_lon = nc_lon[np.ix_(range(len(unique_y)), range(len(unique_x)))]
-   
+
+
+    ## Trying to deal with the damn long range below
+    # Adjust longitudes to 0-360 range
+    #adjusted_lon = (target_lon + 360) % 360
+
+    
+    # Second time to get the correct values: use the lon min and max
+    #domain_mask2 = (adjusted_lon >= (lon_min + 360) % 360) & (adjusted_lon <= 360)
+    #domain_mask3 = (adjusted_lon >= 0) & (adjusted_lon <= (lon_max + 360) % 360)
+    #domain_mask_lon = domain_mask2 | domain_mask3
+
+    #y_indices, x_indices = np.where(domain_mask_lon)
+    #unique_x = np.unique(nc.x.values[x_indices])
+    #unique_y = np.unique(nc.y.values[y_indices])
+    #target_lat2 = target_lat[np.ix_(range(len(unique_y)), range(len(unique_x)))]
+    #target_lon2 = target_lon[np.ix_(range(len(unique_y)), range(len(unique_x)))]
+
+
+
+    
+    # Second time to get the correct values: use the lon min and max
+    #domain_mask2 = (target_lon >= lon_min) & (target_lon <= 360)
+    #domain_mask3 = (target_lon >= 0) & (target_lon <= lon_max)
+    #domain_mask_lon = domain_mask2 & domain_mask3
+    #y_indices, x_indices = np.where(domain_mask_lon)
+    #unique_x = np.unique(nc.x.values[x_indices])
+    #unique_y = np.unique(nc.y.values[y_indices])
+    #target_lat2 = target_lat[np.ix_(range(len(unique_y)), range(len(unique_x)))]
+    #target_lon2 = target_lon[np.ix_(range(len(unique_y)), range(len(unique_x)))]
+
+    # Third time to get the correct values: use the lon min and max
+    #domain_mask3 = (target_lon2 <= lon_max)
+    #y_indices, x_indices = np.where(domain_mask3)
+    #unique_x = np.unique(nc.x.values[x_indices])
+    #unique_y = np.unique(nc.y.values[y_indices])
+    #target_lat3 = target_lat2[np.ix_(range(len(unique_y)), range(len(unique_x)))]
+    #target_lon3 = target_lon2[np.ix_(range(len(unique_y)), range(len(unique_x)))]
     # Create target definition
     target_def = pr.geometry.GridDefinition(lons=target_lon, lats=target_lat)
     #target_def = pr.geometry.GridDefinition(lons=x_grid, lats=y_grid)
+    #target_def = pr.geometry.GridDefinition(lons=target_lon3, lats=target_lat3)
     # Get the arrays
     print("Borders of the resulting mesh")
     print(unique_y.min(),unique_y.max())
@@ -135,11 +194,11 @@ def upsample_snowcover_carra_to_metgrid(
     ds_harm = xr.open_dataset(harmonie_file)
 
     
-    src_def,target_def, orig_def, target_lat, target_lon = get_geom_def(input_file, harmonie_file, obs_var, var_out, model_var, prob_snow_thr)
+    src_def,target_def, orig_def, target_lat, target_lon = get_geom_def(input_file, harmonie_file)
 
     # Resample data
     data_in = ds_harm[model_var].values
-    bin_data_in = np.where((~np.isnan(data_in)) & (data_in > prob_snow_thr), 1, 0)
+    #bin_data_in = np.where((~np.isnan(data_in)) & (data_in > prob_snow_thr), 1, 0)
     times = ds_harm["time"].values
     # Using average resampling for downscaling
     data_out = pr.kd_tree.resample_nearest(
@@ -158,7 +217,7 @@ def upsample_snowcover_carra_to_metgrid(
     std_unix_time = [seconds_to_unix_time(ts) for ts in seconds_since_1978]
 
     # Reshape data for output
-    n_time = len(times)
+    #n_time = len(times)
     if len(data_out.shape) == 2:
         data_out = data_out.reshape(1, *data_out.shape)
 
@@ -234,36 +293,36 @@ def dump_to_nc(ds,output_file):
 
     # Set grid mapping attributes
 
+if __name__ == "__main__":
+    input_file = "../../sample_data/Cryo_clim/reg_ll_prob_snow_c_date.nc"
+    nc = xr.open_dataset(input_file)
 
-input_file = "../../sample_data/Cryo_clim/reg_ll_prob_snow_c_date.nc"
-nc = xr.open_dataset(input_file)
+    harmonie_file = "../../sample_data/CARRA1/260289_20150501_analysis_NO-AR-CE_reg.grib2"
 
-harmonie_file = "../../sample_data/CARRA1/260289_20150501_analysis_NO-AR-CE_reg.grib2"
+    obs_var = "prob_snow_c"
+    var_out = "fscov"
+    model_var = "fscov"
+    prob_snow_thr = 0.8
+    data_out,ds = upsample_snowcover_carra_to_metgrid(
+        input_file, harmonie_file, obs_var, var_out, model_var,prob_snow_thr
+        )
 
-obs_var = "prob_snow_c"
-var_out = "fscov"
-model_var = "fscov"
-prob_snow_thr = 0.8
-data_out,ds = upsample_snowcover_carra_to_metgrid(
-       input_file, harmonie_file, obs_var, var_out, model_var,prob_snow_thr
-    )
-
-ds_harm = xr.open_dataset(harmonie_file)
-lon_min = ds_harm.longitude.min()
-lon_max = ds_harm.longitude.max()
+    ds_harm = xr.open_dataset(harmonie_file)
+    lon_min = ds_harm.longitude.min()
+    lon_max = ds_harm.longitude.max()
 
 
-if lon_min < lon_max:
-    # Simple case: lon_min to lon_max is continuous
-    subset = ds.sel(lon=slice(lon_min, lon_max))
-else:
-    # Case where the range crosses the 0° longitude line
-    subset = xr.concat(
-        [ds.sel(lon=slice(lon_min, 360)), ds.sel(lon=slice(0, lon_max))],
-        dim="lon"
-    )
-#dump_to_nc(ds,"snow_cover_from_carra_upsampled_to_met_grid.nc")
-subset.to_netcdf("snow_cover_from_carra2.nc")
+    if lon_min < lon_max:
+        # Simple case: lon_min to lon_max is continuous
+        subset = ds.sel(lon=slice(lon_min, lon_max))
+    else:
+        # Case where the range crosses the 0° longitude line
+        subset = xr.concat(
+            [ds.sel(lon=slice(lon_min, 360)), ds.sel(lon=slice(0, lon_max))],
+            dim="lon"
+        )
+    #dump_to_nc(ds,"snow_cover_from_carra_upsampled_to_met_grid.nc")
+    subset.to_netcdf("snow_cover_from_carra2.nc")
 
 
 
