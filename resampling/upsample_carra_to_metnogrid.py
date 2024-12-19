@@ -31,39 +31,43 @@ import numpy as np
 from netCDF4 import Dataset
 
 from pyproj import Transformer
+import argparse
+
 from warnings import filterwarnings
 filterwarnings('ignore')
 
 
-/*************  ✨ Codeium Command 🌟  *************/
 def seconds_to_unix_time(seconds_since_1978):
     """
-    Convert seconds since 1978-01-01 to Unix timestamp.
+    Convert seconds since January 1, 1978 to Unix timestamp.
 
-    Parameters
-    ----------
-    seconds_since_1978 : int
-        Number of seconds since 1978-01-01 00:00:00.
+    Args:
+        seconds_since_1978 (int): Number of seconds since January 1, 1978.
 
-    Returns
-    -------
-    unix_time : float
-        Unix time in seconds since 1970-01-01 00:00:00.
+    Returns:
+        float: Corresponding Unix timestamp.
     """
-    # Reference date
     base_datetime = datetime.datetime(1978, 1, 1, 0, 0, 0)
-
-    # Add seconds since reference date
     target_datetime = base_datetime + datetime.timedelta(seconds=seconds_since_1978)
-
-    # Convert to Unix time
     return target_datetime.timestamp()
-/******  f6a14190-75a7-449b-a67b-ed334664cb4c  *******/
 
-def get_geom_def(
-    input_file, harmonie_file):
+def get_geom_def(input_file, harmonie_file):
     """
-    This function dumps the domain
+    This function generates the geometric definitions required for resampling data from a source grid (HARMONIE) 
+    to a target grid (subset of NetCDF grid). It reads the input NetCDF files, extracts the latitude and longitude 
+    values, and creates the source and target grid definitions.
+    Parameters:
+    input_file (str): Path to the input NetCDF file.
+    harmonie_file (str): Path to the HARMONIE NetCDF file.
+    Returns:
+    tuple: A tuple containing the following elements:
+        - src_def (pyresample.geometry.SwathDefinition): Source grid definition based on HARMONIE data.
+        - target_def (pyresample.geometry.GridDefinition): Target grid definition based on the subset of NetCDF data.
+        - orig_def (pyresample.geometry.GridDefinition): Original grid definition based on the NetCDF data.
+        - flip_y (numpy.ndarray): Flipped y-coordinates of the target grid.
+        - unique_x (numpy.ndarray): Unique x-coordinates of the target grid.
+    input_file, harmonie_file):
+    
     """
     # Open input datasets
     nc = xr.open_dataset(input_file)
@@ -189,7 +193,23 @@ def get_geom_def(
 def upsample_snowcover_carra_to_metgrid(
     input_file, harmonie_file, obs_var="prob_snow_c", var_out="prob_snow_c", model_var="fscov", prob_snow_thr=80.0
 ):
-    # Open input datasets
+    """
+    This function reads the input NetCDF file containing snow cover data from CARRA, and resamples the data to the
+    Met Norway grid using the HARMONIE data as the source grid. The resampled data is then saved to a new NetCDF file.  
+    Parameters: 
+
+    input_file (str): Path to the input NetCDF file containing snow cover data from CARRA.
+    harmonie_file (str): Path to the HARMONIE GRIB file.
+    obs_var (str): Name of the variable in the input NetCDF file.
+    var_out (str): Name of the output variable in the new NetCDF file.
+    model_var (str): Name of the variable in the HARMONIE GRIB file.
+    prob_snow_thr (float): Threshold value for snow cover probability.
+    Returns:
+    tuple: A tuple containing the following elements:
+        - data_out (numpy.ndarray): Resampled snow cover data.
+        - ds (xarray.Dataset): Output dataset containing the resampled data.
+    """
+
     nc = xr.open_dataset(input_file)
     ds_harm = xr.open_dataset(harmonie_file)
 
@@ -251,7 +271,14 @@ def upsample_snowcover_carra_to_metgrid(
 
 def dump_to_nc(ds,output_file):
     
-    # Set attributes
+    """
+    Save the resampled data to a NetCDF file.
+
+    Parameters:
+        ds (xarray.Dataset): Output dataset containing the resampled data.
+        output_file (str): Path to the output NetCDF file.
+            
+    """
     ds.time.attrs.update(
         {
             "units": "seconds since 1970-01-01 00:00:00",
@@ -292,25 +319,40 @@ def dump_to_nc(ds,output_file):
         proj_var.proj4 = "+proj=longlat +datum=WGS84"
 
     # Set grid mapping attributes
+def parse_arguments():
+    """
+    Parse command line arguments.
+    
+    Returns:
+        argparse.Namespace: Parsed command line arguments.
+    """
+    parser = argparse.ArgumentParser(description="Upsample CARRA data to MET Norway grid.")
+    parser.add_argument("harmonie_file", type=str, help="Path to the Harmonie dataset file.")
+    parser.add_argument("input_file", type=str, help="Path to the input dataset file.")
+    parser.add_argument("output_file", type=str, help="Path to the output NetCDF file.")
+    return parser.parse_args()
 
-if __name__ == "__main__":
-    input_file = "../../sample_data/Cryo_clim/reg_ll_prob_snow_c_date.nc"
-    nc = xr.open_dataset(input_file)
-
-    harmonie_file = "../../sample_data/CARRA1/260289_20150501_analysis_NO-AR-CE_reg.grib2"
+def main():
+    """
+    Main function to upsample CARRA data to MET Norway grid.
+    """
 
     obs_var = "prob_snow_c"
     var_out = "fscov"
     model_var = "fscov"
     prob_snow_thr = 0.8
+
+    args = parse_arguments()
+    harmonie_file = args.harmonie_file
+    input_file = args.input_file
+    output_file = args.output_file
+    ds_harm = xr.open_dataset(harmonie_file)
+    lon_min = ds_harm.longitude.min().item()
+    lon_max = ds_harm.longitude.max().item()
+
     data_out,ds = upsample_snowcover_carra_to_metgrid(
         input_file, harmonie_file, obs_var, var_out, model_var,prob_snow_thr
         )
-
-    ds_harm = xr.open_dataset(harmonie_file)
-    lon_min = ds_harm.longitude.min()
-    lon_max = ds_harm.longitude.max()
-
 
     if lon_min < lon_max:
         # Simple case: lon_min to lon_max is continuous
@@ -321,9 +363,40 @@ if __name__ == "__main__":
             [ds.sel(lon=slice(lon_min, 360)), ds.sel(lon=slice(0, lon_max))],
             dim="lon"
         )
-    #dump_to_nc(ds,"snow_cover_from_carra_upsampled_to_met_grid.nc")
-    subset.to_netcdf("snow_cover_from_carra2.nc")
+    # dump_to_nc(ds, "snow_cover_from_carra_upsampled_to_met_grid.nc")
+    subset.to_netcdf(output_file)
 
+if __name__ == "__main__":
+    main()
 
-
-
+#if __name__ == "__main__":
+#
+#    input_file = "../../sample_data/Cryo_clim/reg_ll_prob_snow_c_date.nc"
+#    nc = xr.open_dataset(input_file)
+#
+#    harmonie_file = "../../sample_data/CARRA1/260289_20150501_analysis_NO-AR-CE_reg.grib2"
+#
+#    obs_var = "prob_snow_c"
+#    var_out = "fscov"
+#    model_var = "fscov"
+#    prob_snow_thr = 0.8
+#    data_out,ds = upsample_snowcover_carra_to_metgrid(
+#        input_file, harmonie_file, obs_var, var_out, model_var,prob_snow_thr
+#        )
+#
+#    ds_harm = xr.open_dataset(harmonie_file)
+#    lon_min = ds_harm.longitude.min()
+#    lon_max = ds_harm.longitude.max()
+#
+#
+#    if lon_min < lon_max:
+#        # Simple case: lon_min to lon_max is continuous
+#        subset = ds.sel(lon=slice(lon_min, lon_max))
+#    else:
+#        # Case where the range crosses the 0° longitude line
+#        subset = xr.concat(
+#            [ds.sel(lon=slice(lon_min, 360)), ds.sel(lon=slice(0, lon_max))],
+#            dim="lon"
+#        )
+#    #dump_to_nc(ds,"snow_cover_from_carra_upsampled_to_met_grid.nc")
+#    subset.to_netcdf("snow_cover_from_carra2.nc")
