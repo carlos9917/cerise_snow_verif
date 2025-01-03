@@ -8,6 +8,7 @@
 
 
 NBOOK=cerise_fss_nuuk.qmd
+NBOOK=$1
 #create the html
 quarto preview $NBOOK --no-browser --no-watch-inputs
 
