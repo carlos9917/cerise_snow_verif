@@ -7,7 +7,7 @@ conda activate gpp
 CRYO_DATA=/ec/res4/scratch/nhd/CERISE/CRYO_NC
 IDATE=20150501
 EDATE=20150520
-input_var="snowc" #the variable I want to read from the grib file
+input_var="prob_snow_c" #the variable I want to read from the grib file
 output_var="snowc" # the variable to dump as extra variable in the cryo file for comparison. The code will calculate the binary variable too
 ref_harm=../../CARRA2/snowc_2015-01-01_reg.grib2 #reading the grid from this sample file
 
