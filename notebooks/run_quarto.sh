@@ -10,11 +10,11 @@
 NBOOK=cerise_fss_nuuk.qmd
 NBOOK=$1
 #create the html
-quarto preview $NBOOK --no-browser --no-watch-inputs
+#quarto preview $NBOOK --no-browser --no-watch-inputs
 
 #can also use
 #quarto render $NBOOK 
 
 
 #convert to ipynb
-#quarto convert $NBOOK
+quarto convert $NBOOK

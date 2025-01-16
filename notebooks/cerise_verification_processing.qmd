@@ -170,9 +170,9 @@ def get_geom_def(input_file, harmonie_file):
     lon_min = harm_lon.min()
     lon_max = harm_lon.max()
 
-    #print("Borders of the harmonie grid")
-    #print(lat_min,lat_max)
-    #print(lon_min,lon_max)
+    print("Borders of the harmonie grid")
+    print(lat_min,lat_max)
+    print(lon_min,lon_max)
     nc_lat = nc.lat.values  # This is already 2D
     nc_lon = nc.lon.values  # This is already 2D
 
@@ -328,10 +328,14 @@ obs_var = "prob_snow_c"
 var_out = "fscov"
 model_var = "fscov"
 prob_snow_thr = 0.8
+date = "20150501"
 
-harmonie_file="../../sample_data/CARRA1/260289_20150501_analysis_NO-AR-CE_reg.grib2"
+ORIGIN="NO-AR-CE"
+harmonie_file=f"../../sample_data/CARRA1/260289_{date}_analysis_{ORIGIN}_reg.grib2"
+
+
 input_file="../../sample_data/Cryo_clim/reg_ll_prob_snow_c_date.nc"
-output_file="carra_fscov_cryo_clim_grid_20150501.nc"
+output_file=f"carra_fscov_cryo_clim_grid_{date}_{ORIGIN}.nc"
 
 
 ds_harm = xr.open_dataset(harmonie_file)
@@ -365,12 +369,14 @@ import xarray as xr
 import matplotlib.pyplot as plt
 from warnings import filterwarnings
 filterwarnings('ignore')
-date = "201505011200"
+date = "20150501"
+HH="1200"
+ORIGIN="NO-AR-CE"
 variable_name = 'prob_snow_c'
 
 data_path = "../../sample_data/Cryo_clim"
 cryo_file = os.path.join(data_path,f"cryoreg_ll_{variable_name}_{date}.nc")
-carra_file="carra_fscov_cryo_clim_grid_20150501.nc"
+carra_file=f"carra_fscov_cryo_clim_grid_{date}_{ORIGIN}.nc"
 
 plt.figure(figsize=(8, 5))
 ds = xr.open_dataset(carra_file)
@@ -379,10 +385,10 @@ plt.title("CARRA in cryo clim grid, original variable")
 
 plt.figure(figsize=(8, 5))
 ds = xr.open_dataset(carra_file)
-ds["fscov"][0,:,:].plot()
+ds["bin_snow"][0,:,:].plot()
 plt.title("CARRA in cryo clim grid, binary snow variable")
 
-harmonie_file="../../sample_data/CARRA1/260289_20150501_analysis_NO-AR-CE_reg.grib2"
+harmonie_file=f"../../sample_data/CARRA1/260289_{date}_analysis_{ORIGIN}_reg.grib2"
 
 plt.figure(figsize=(8, 5))
 ds = xr.open_dataset(harmonie_file)
