@@ -2,12 +2,12 @@
 
 # Retrieves mars data for a whole month in a regular grid
 OUTDIR=/ec/res4/scratch/nhd/CERISE/ANALYSIS_FILES
-ORIGIN=NO-AR-CE 
+ORIGIN=NO-AR-CW
 PERIOD=201505
 INI=20150501
-END=20150531
-GRID="lambert"
-GRID="reg"
+END=20150501
+GRID="lambert" #original projection
+GRID="reg" #regular lat lon (done via MARS)
 TIME=0000/0300/0600/0900/1200/1500/1800/2100
 TIME=0000
 PARAM=141 #snow depth
